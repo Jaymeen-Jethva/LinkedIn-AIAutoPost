@@ -6,8 +6,9 @@ from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from langgraph.graph.state import CompiledStateGraph
 import requests
-from gemini_client import generate_linkedin_post, revise_linkedin_post, generate_image_with_gemini, LinkedInPost
+from gemini_client import generate_linkedin_post, generate_linkedin_post_with_search, revise_linkedin_post, generate_image_with_gemini, LinkedInPost
 from linkedin_api import linkedin_api
+from tavily_search import tavily_search
 
 
 @dataclass
@@ -16,6 +17,7 @@ class WorkflowState:
     topic: str = ""
     post_type: str = ""  # "ai_news" or "personal_milestone"
     user_preferences: Optional[Dict] = field(default_factory=dict)
+    include_image: bool = True  # New field for image preference
     generated_post: Optional[LinkedInPost] = None
     image_path: str = ""
     user_feedback: str = ""
@@ -35,7 +37,7 @@ class LinkedInWorkflow:
     def _build_workflow(self) -> CompiledStateGraph:
         """Build the LangGraph workflow"""
         graph = StateGraph(WorkflowState)
-        
+
         # Add nodes
         graph.add_node("generate_content", self._generate_content)
         graph.add_node("generate_image", self._generate_image)
@@ -43,14 +45,22 @@ class LinkedInWorkflow:
         graph.add_node("revise_content", self._revise_content)
         graph.add_node("post_to_linkedin", self._post_to_linkedin)
         graph.add_node("error_handler", self._error_handler)
-        
+
         # Set entry point
         graph.set_entry_point("generate_content")
-        
-        # Add edges
-        graph.add_edge("generate_content", "generate_image")
+
+        # Conditional edges based on image preference
+        graph.add_conditional_edges(
+            "generate_content",
+            self._image_decision,
+            {
+                "with_image": "generate_image",
+                "without_image": "await_user_approval"
+            }
+        )
+
         graph.add_edge("generate_image", "await_user_approval")
-        
+
         # Conditional edges based on user approval
         graph.add_conditional_edges(
             "await_user_approval",
@@ -61,22 +71,37 @@ class LinkedInWorkflow:
                 "rejected": END
             }
         )
-        
-        graph.add_edge("revise_content", "generate_image")
+
+        graph.add_edge("revise_content", "generate_content")  # Go back to content generation for revision
         graph.add_edge("post_to_linkedin", END)
         graph.add_edge("error_handler", END)
-        
+
         return graph.compile()
     
     def _generate_content(self, state: WorkflowState) -> WorkflowState:
-        """Generate LinkedIn post content using Gemini AI"""
+        """Generate LinkedIn post content using Gemini AI with web search enhancement"""
         try:
             print(f"Generating content for topic: {state.topic}")
-            generated_post = generate_linkedin_post(
-                topic=state.topic,
-                post_type=state.post_type,
-                user_preferences=state.user_preferences or {}
-            )
+
+            # Check if Tavily search is available for enhanced content
+            if tavily_search.is_available():
+                print("Using web search enhancement for content generation")
+                generated_post, search_results = generate_linkedin_post_with_search(
+                    topic=state.topic,
+                    post_type=state.post_type,
+                    user_preferences=state.user_preferences or {}
+                )
+                print(f"Content generated with {len(search_results)} web search results")
+            else:
+                print("Tavily search not available, using standard content generation")
+                generated_post = generate_linkedin_post(
+                    topic=state.topic,
+                    post_type=state.post_type,
+                    user_preferences=state.user_preferences or {},
+                    use_web_search=False  # Disable web search if Tavily not available
+                )
+                print("Content generated without web search enhancement")
+
             state.generated_post = generated_post
             print("Content generated successfully")
             return state
@@ -149,6 +174,14 @@ class LinkedInWorkflow:
         # The actual approval logic is handled by the web interface
         return state
     
+    def _image_decision(self, state: WorkflowState) -> str:
+        """Decide whether to generate image or skip it"""
+        if state.include_image:
+            return "with_image"
+        else:
+            print("Skipping image generation as requested by user")
+            return "without_image"
+
     def _approval_decision(self, state: WorkflowState) -> str:
         """Decide next step based on user approval"""
         if state.approved:
@@ -223,12 +256,13 @@ class LinkedInWorkflow:
         print(f"Error in workflow: {state.error}")
         return state
     
-    def run_workflow(self, topic: str, post_type: str, user_preferences: Dict = None) -> WorkflowState:
+    def run_workflow(self, topic: str, post_type: str, user_preferences: Dict = None, include_image: bool = True) -> WorkflowState:
         """Run the complete workflow"""
         initial_state = WorkflowState(
             topic=topic,
             post_type=post_type,
-            user_preferences=user_preferences or {}
+            user_preferences=user_preferences or {},
+            include_image=include_image
         )
         
         try:

@@ -16,6 +16,7 @@ An intelligent LinkedIn automation system that leverages **Google Gemini AI** to
 ### 🎯 Key Features
 
 - **🤖 AI-Powered Content**: Generate professional LinkedIn posts using Gemini 2.5 Pro
+- **🔍 Web Search Integration**: Access latest information using Tavily search (context 7)
 - **🎨 Smart Images**: Create relevant visuals with Gemini 2.0 Flash (nano banana)
 - **🔄 Approval Workflow**: Review and revise content before posting
 - **🌙 Dark/Light Theme**: Beautiful glassmorphism interface with theme toggle
@@ -133,6 +134,7 @@ An intelligent LinkedIn automation system that leverages **Google Gemini AI** to
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | ✅ | Your Google Gemini API key |
+| `TAVILY_API_KEY` | ❌ | Your Tavily API key for web search (enhances content with latest info) |
 | `LINKEDIN_ACCESS_TOKEN` | ❌ | For real LinkedIn posting |
 | `LINKEDIN_PERSON_ID` | ❌ | Your LinkedIn profile ID |
 

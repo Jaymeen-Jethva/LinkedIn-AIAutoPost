@@ -35,6 +35,7 @@ class PostRequest(BaseModel):
     topic: str
     post_type: str  # "ai_news" or "personal_milestone"
     user_preferences: Optional[Dict] = {}
+    include_image: bool = True  # New field for image preference
 
 class ApprovalRequest(BaseModel):
     session_id: str
@@ -58,7 +59,8 @@ async def generate_post(post_request: PostRequest):
         result_state = linkedin_workflow.run_workflow(
             topic=post_request.topic,
             post_type=post_request.post_type,
-            user_preferences=post_request.user_preferences
+            user_preferences=post_request.user_preferences,
+            include_image=post_request.include_image
         )
         
         # Store the state for later continuation
