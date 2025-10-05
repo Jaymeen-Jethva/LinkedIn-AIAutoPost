@@ -136,7 +136,7 @@ class TavilySearchTool:
 
         return unique_results[:7]
 
-    def format_search_results_for_ai(self, results: List[Dict[str, Any]], max_context_length: int = 4000) -> str:
+    def format_search_results_for_ai(self, results: List[Dict[str, Any]], max_context_length: int = 40000) -> str:
         """
         Format search results for AI consumption
 
@@ -156,14 +156,14 @@ class TavilySearchTool:
         for i, result in enumerate(results, 1):
             # Create formatted result entry
             entry = f"""--- SEARCH RESULT {i} ---
-Title: {result.get('title', 'No title')}
-URL: {result.get('url', 'No URL')}
-Published: {result.get('published_date', 'No date')}
-Relevance Score: {result.get('score', 0):.2f}
+                    Title: {result.get('title', 'No title')}
+                    URL: {result.get('url', 'No URL')}
+                    Published: {result.get('published_date', 'No date')}
+                    Relevance Score: {result.get('score', 0):.2f}
 
-Content: {result.get('content', 'No content available')}
+                    Content: {result.get('content', 'No content available')}
 
-"""
+                    """
 
             # Check if adding this entry would exceed context limit
             if current_length + len(entry) > max_context_length:
@@ -198,18 +198,18 @@ def create_search_enhanced_prompt(base_prompt: str, search_results: str, topic: 
     """
     enhanced_prompt = f"""{base_prompt}
 
-IMPORTANT: I have access to recent web search results about "{topic}". Use this latest information to ensure accuracy and relevance:
+        IMPORTANT: I have access to recent web search results about "{topic}". Use this latest information to ensure accuracy and relevance:
 
-{search_results}
+        {search_results}
 
-When creating content:
-1. Reference current trends and recent developments when relevant
-2. Include specific facts, statistics, or examples from the search results
-3. Ensure all technical information is up-to-date
-4. If the search results contradict any assumptions, prioritize the web data
-5. Maintain professional tone while incorporating latest insights
+        When creating content:
+        1. Reference current trends and recent developments when relevant
+        2. Include specific facts, statistics, or examples from the search results
+        3. Ensure all technical information is up-to-date
+        4. If the search results contradict any assumptions, prioritize the web data
+        5. Maintain professional tone while incorporating latest insights
 
-Generate the LinkedIn post using both your knowledge and these current web search results."""
+        Generate the LinkedIn post using both your knowledge and these current web search results."""
 
     return enhanced_prompt
 

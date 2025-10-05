@@ -89,7 +89,8 @@ class LinkedInWorkflow:
                 generated_post, search_results = generate_linkedin_post_with_search(
                     topic=state.topic,
                     post_type=state.post_type,
-                    user_preferences=state.user_preferences or {}
+                    user_preferences=state.user_preferences or {},
+                    include_image=state.include_image # Pass include_image
                 )
                 print(f"Content generated with {len(search_results)} web search results")
             else:
@@ -98,6 +99,7 @@ class LinkedInWorkflow:
                     topic=state.topic,
                     post_type=state.post_type,
                     user_preferences=state.user_preferences or {},
+                    include_image=state.include_image, # Pass include_image
                     use_web_search=False  # Disable web search if Tavily not available
                 )
                 print("Content generated without web search enhancement")

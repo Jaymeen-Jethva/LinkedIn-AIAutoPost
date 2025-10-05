@@ -24,11 +24,11 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 class LinkedInPost(BaseModel):
     content: str
     hashtags: list[str]
-    image_prompt: str
+    image_prompt: Optional[str] = None  # Make image_prompt optional
     post_type: str  # "ai_news" or "personal_milestone"
 
 
-def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = {}, use_web_search: bool = True) -> LinkedInPost:
+def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = {}, include_image: bool = True, use_web_search: bool = True) -> LinkedInPost:
     """Generate a LinkedIn post based on topic and type using Gemini AI with optional web search"""
 
     # Perform web search if enabled and available
@@ -62,18 +62,20 @@ def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = 
             "You are a LinkedIn content creator specializing in AI and technology news. "
             "Create an engaging LinkedIn post about the given topic. "
             "The post should be professional, informative, and include relevant hashtags. "
-            "Also provide a detailed image prompt for generating a relevant visual. "
             "Keep the post content between 150-300 words and make it engaging for a professional audience."
         )
+        if include_image:
+            base_system_prompt += " Also provide a detailed image prompt for generating a relevant visual."
         base_user_prompt = f"Create a LinkedIn post about this AI/tech topic: {topic}"
     else:  # personal_milestone
         base_system_prompt = (
             "You are a LinkedIn content creator helping people share personal and professional milestones. "
             "Create an inspiring and authentic LinkedIn post about the given personal achievement or milestone. "
             "The post should be motivational, relatable, and include relevant hashtags. "
-            "Also provide a detailed image prompt for generating a relevant visual. "
             "Keep the post content between 100-250 words and make it personal yet professional."
         )
+        if include_image:
+            base_system_prompt += " Also provide a detailed image prompt for generating a relevant visual."
         base_user_prompt = f"Create a LinkedIn post about this personal milestone: {topic}"
 
     # Enhance prompts with web search results if available
@@ -88,15 +90,29 @@ def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = 
         user_prompt += f"\n\nUser preferences: {user_preferences}"
 
     try:
+        # Conditionally build the response schema
+        response_schema_parts = {
+            "content": {"type": "string"},
+            "hashtags": {"type": "array", "items": {"type": "string"}},
+            "post_type": {"type": "string"}
+        }
+        if include_image:
+            response_schema_parts["image_prompt"] = {"type": "string"}
+
+        response_schema = types.Schema(
+            type=types.Type.OBJECT,
+            properties=response_schema_parts
+        )
+
         response = client.models.generate_content(
-            model="gemini-2.5-pro",
+            model="gemini-2.5-flash",
             contents=[
                 types.Content(role="user", parts=[types.Part(text=user_prompt)])
             ],
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 response_mime_type="application/json",
-                response_schema=LinkedInPost,
+                response_schema=response_schema,
             ),
         )
 
@@ -105,7 +121,13 @@ def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = 
 
         if raw_json:
             data = json.loads(raw_json)
-            post = LinkedInPost(**data)
+            # Manually create LinkedInPost, handling optional image_prompt
+            post = LinkedInPost(
+                content=data.get("content"),
+                hashtags=data.get("hashtags", []),
+                image_prompt=data.get("image_prompt"),
+                post_type=data.get("post_type")
+            )
 
             # Add metadata about web search usage
             if search_results:
@@ -119,7 +141,7 @@ def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = 
         raise Exception(f"Failed to generate LinkedIn post: {e}")
 
 
-def generate_linkedin_post_with_search(topic: str, post_type: str, user_preferences: dict = {}) -> tuple[LinkedInPost, List[Dict[str, Any]]]:
+def generate_linkedin_post_with_search(topic: str, post_type: str, user_preferences: dict = {}, include_image: bool = True) -> tuple[LinkedInPost, List[Dict[str, Any]]]:
     """
     Generate a LinkedIn post with web search results
 
@@ -139,7 +161,7 @@ def generate_linkedin_post_with_search(topic: str, post_type: str, user_preferen
             logging.error(f"Web search failed: {e}")
 
     # Generate post using search results
-    post = generate_linkedin_post(topic, post_type, user_preferences, use_web_search=True)
+    post = generate_linkedin_post(topic, post_type, user_preferences, include_image, use_web_search=True)
 
     return post, search_results
 
