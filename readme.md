@@ -124,26 +124,4 @@ linkedin-ai-autopost/
 
 Without LinkedIn credentials, the app runs in **simulation mode** (posts are logged but not published).
 
----
 
-## 🔍 Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| "Gemini API Key not found" | Check `GEMINI_API_KEY` in `.env` |
-| "LinkedIn OAuth not configured" | Add `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` to `.env` |
-| LinkedIn connection fails | Verify redirect URI is added to your LinkedIn app |
-| Images not generating | Check Gemini API quota; fallback image service will be used |
-| Port 8000 in use | Kill process: `lsof -ti:8000 \| xargs kill -9` |
-
----
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
----
-
-<div align="center">
-  <p><strong>Built with ❤️ using Google Gemini AI & FastAPI</strong></p>
-</div>
