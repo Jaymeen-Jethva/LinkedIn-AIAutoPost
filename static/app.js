@@ -448,6 +448,140 @@ class PostForm {
 
   init() {
     this.form?.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.setupActionListeners();
+  }
+
+  setupActionListeners() {
+    console.log("Setting up action listeners using event delegation");
+
+    // Use event delegation - attach to document and check target
+    // This pattern works reliably for elements inside modals
+    document.addEventListener('click', (e) => {
+      // Approve Button
+      if (e.target.closest('#approveBtn')) {
+        console.log("Approve button clicked via delegation");
+        e.preventDefault();
+        this.handleApprove();
+        return;
+      }
+
+      // Revision Button (opens modal)
+      if (e.target.closest('#reviseBtn')) {
+        console.log("Revise button clicked via delegation");
+        e.preventDefault();
+        new bootstrap.Modal(document.getElementById('revisionModal')).show();
+        return;
+      }
+
+      // Submit Revision Button
+      if (e.target.closest('#submitRevision')) {
+        console.log("Submit revision clicked via delegation");
+        e.preventDefault();
+        this.handleSubmitRevision();
+        return;
+      }
+    });
+
+    console.log("Event delegation setup complete");
+  }
+
+  async handleApprove() {
+    console.log("handleApprove called. Session ID:", this.currentSessionId);
+
+    if (!this.currentSessionId) {
+      alert("Error: No active session found. Please try generating the post again.");
+      console.error("HandleApprove failed: No currentSessionId");
+      return;
+    }
+
+    // Show loading state on button
+    const btn = document.getElementById('approveBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Posting...';
+
+    try {
+      const response = await fetch('/approve-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: this.currentSessionId,
+          approved: true,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('previewModal')).hide();
+
+        // Show success message
+        this.snackbar.show('🎉 Post published successfully to LinkedIn!', [], 5000);
+
+        // Reset form or state if desired
+        // this.form.reset();
+      } else {
+        alert('Error: ' + (result.message || 'Posting failed'));
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
+  async handleSubmitRevision() {
+    const feedbackInput = document.getElementById('feedbackText');
+    const feedback = feedbackInput.value.trim();
+
+    if (!this.currentSessionId) return;
+    if (!feedback) {
+      alert('Please provide feedback');
+      return;
+    }
+
+    const btn = document.getElementById('submitRevision');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Revising...';
+
+    try {
+      const response = await fetch('/approve-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: this.currentSessionId,
+          approved: false,
+          feedback: feedback,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.revised) {
+        // Update the preview with new content
+        this.showPreview(result);
+
+        // Close revision modal
+        bootstrap.Modal.getInstance(document.getElementById('revisionModal')).hide();
+        feedbackInput.value = ''; // clear feedback
+
+        this.snackbar.show('Content revised! Check the new draft.');
+      } else {
+        alert('Revision failed');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   }
 
   async handleSubmit(e) {
