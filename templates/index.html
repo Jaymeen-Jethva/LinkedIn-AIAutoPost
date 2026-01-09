@@ -1,19 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LinkedIn Post Automation</title>
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-    rel="stylesheet"
-  />
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+    rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
+
 <body>
   <!-- Circuit Pattern Background -->
   <div class="circuit-pattern">
@@ -39,8 +37,34 @@
         <span class="hero-pill">🖼️ Images</span>
         <span class="hero-pill">📅 Scheduling</span>
       </div>
-      <!-- Move theme toggle into header -->
+      <!-- Move theme toggle and LinkedIn controls into header -->
       <div class="header-controls">
+        <!-- LinkedIn Connection Status & Buttons -->
+        <div class="linkedin-controls" id="linkedinControls">
+          <!-- Disconnected state -->
+          <div class="linkedin-disconnected" id="linkedinDisconnected">
+            <button id="linkedinConnectBtn" class="linkedin-connect-btn">
+              <svg class="linkedin-icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path
+                  d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+              </svg>
+              <span class="btn-text">Connect LinkedIn</span>
+            </button>
+          </div>
+          <!-- Connected state -->
+          <div class="linkedin-connected" id="linkedinConnected" style="display: none;">
+            <div class="linkedin-status">
+              <span class="status-dot connected"></span>
+              <span class="status-text font-mono">LinkedIn Connected</span>
+            </div>
+            <button id="linkedinDisconnectBtn" class="linkedin-disconnect-btn" title="Disconnect LinkedIn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <path
+                  d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <button class="theme-toggle" aria-label="Toggle theme"></button>
       </div>
     </header>
@@ -52,40 +76,28 @@
           <div style="padding: 2rem; display: flex; flex-direction: column; height: 100%;">
             <form id="postForm" style="flex: 1;">
               <div class="mb-4">
-                <label for="topic" class="form-label font-mono" style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <label for="topic" class="form-label font-mono"
+                  style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
                   What would you like to post about?
                 </label>
-                <textarea
-                  class="form-control"
-                  id="topic"
-                  name="topic"
-                  rows="4"
+                <textarea class="form-control" id="topic" name="topic" rows="4"
                   placeholder="e.g., 'Latest developments in AI and machine learning' or 'I just completed my certification in data science'"
-                  required
-                ></textarea>
+                  required></textarea>
                 <div class="char-counter">
                   <span id="charCount">0</span> characters
                   <div class="progress-ring">
                     <svg width="32" height="32">
                       <circle cx="16" cy="16" r="14" stroke="var(--border-color)" stroke-width="3" fill="none" />
-                      <circle
-                        cx="16"
-                        cy="16"
-                        r="14"
-                        stroke="var(--primary-color)"
-                        stroke-width="3"
-                        fill="none"
-                        stroke-linecap="round"
-                        class="progress"
-                        id="progressCircle"
-                      />
+                      <circle cx="16" cy="16" r="14" stroke="var(--primary-color)" stroke-width="3" fill="none"
+                        stroke-linecap="round" class="progress" id="progressCircle" />
                     </svg>
                   </div>
                 </div>
               </div>
 
               <div class="mb-4">
-                <label class="form-label font-mono" style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <label class="form-label font-mono"
+                  style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
                   Post Style
                 </label>
                 <div class="segmented-control" id="postTypeControl">
@@ -101,16 +113,19 @@
 
               <div class="mb-4">
                 <div class="image-toggle-container">
-                  <label class="form-label font-mono" style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; display: block;">
+                  <label class="form-label font-mono"
+                    style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1rem; display: block;">
                     Include AI Image
                   </label>
                   <div class="image-toggle-wrapper">
-                    <input type="checkbox" id="includeImageToggle" name="include_image" class="image-toggle-checkbox" checked />
+                    <input type="checkbox" id="includeImageToggle" name="include_image" class="image-toggle-checkbox"
+                      checked />
                     <label for="includeImageToggle" class="image-toggle-label">
                       <span class="toggle-track"></span>
                     </label>
                   </div>
-                  <div class="toggle-description font-mono" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+                  <div class="toggle-description font-mono"
+                    style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                     <span class="toggle-desc-on">Generate AI images for richer posts</span>
                     <span class="toggle-desc-off" style="display: none;">Text-only posts for faster generation</span>
                   </div>
@@ -118,16 +133,12 @@
               </div>
 
               <div class="mb-4">
-                <label for="preferences" class="form-label font-mono" style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                <label for="preferences" class="form-label font-mono"
+                  style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px;">
                   Additional Preferences
                 </label>
-                <textarea
-                  class="form-control"
-                  id="preferences"
-                  name="preferences"
-                  rows="2"
-                  placeholder="e.g., 'Keep it professional but friendly' or 'Include technical details'"
-                ></textarea>
+                <textarea class="form-control" id="preferences" name="preferences" rows="2"
+                  placeholder="e.g., 'Keep it professional but friendly' or 'Include technical details'"></textarea>
               </div>
             </form>
 
@@ -176,7 +187,8 @@
           <div class="preview-header">
             <h3 style="margin: 0; font-weight: 600;">Live Preview</h3>
             <div class="preview-status-indicators">
-              <div class="font-mono" style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
+              <div class="font-mono"
+                style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">
                 Preview Mode
               </div>
               <div class="search-status-indicator" id="searchStatus" style="display: none;">
@@ -226,12 +238,8 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <textarea
-            class="form-control"
-            id="feedbackText"
-            rows="4"
-            placeholder="What would you like to change? Be specific about your feedback..."
-          ></textarea>
+          <textarea class="form-control" id="feedbackText" rows="4"
+            placeholder="What would you like to change? Be specific about your feedback..."></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -244,4 +252,5 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/static/app.js"></script>
 </body>
+
 </html>

@@ -2,14 +2,28 @@ import requests
 import json
 import os
 from typing import Optional, Dict, Any
+from token_storage import load_token
 
 class LinkedInAPI:
     """LinkedIn API integration for posting content"""
     
     def __init__(self):
-        self.access_token = os.getenv('LINKEDIN_ACCESS_TOKEN')
-        self.person_id = os.getenv('LINKEDIN_PERSON_ID')
         self.base_url = 'https://api.linkedin.com/v2'
+        self._load_credentials()
+    
+    def _load_credentials(self):
+        """Load credentials from token.json"""
+        token_data = load_token()
+        if token_data:
+            self.access_token = token_data.get('access_token')
+            self.person_id = token_data.get('person_id')
+        else:
+            self.access_token = None
+            self.person_id = None
+    
+    def reload_token(self):
+        """Reload token from file - useful after OAuth callback"""
+        self._load_credentials()
         
     def is_configured(self) -> bool:
         """Check if LinkedIn API is properly configured"""

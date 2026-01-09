@@ -764,4 +764,200 @@ select.form-control {
   .hero-pills {
     justify-content: center;
   }
+
+  .linkedin-controls {
+    flex-direction: column;
+  }
+
+  .linkedin-connect-btn .btn-text {
+    display: none;
+  }
+
+  .linkedin-status .status-text {
+    display: none;
+  }
+}
+
+/* ================================================
+   LinkedIn Connection Styles
+   ================================================ */
+
+.linkedin-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-right: 1rem;
+}
+
+/* Connect Button */
+.linkedin-connect-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #0077b5, #0a66c2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 119, 181, 0.3);
+}
+
+.linkedin-connect-btn:hover {
+  background: linear-gradient(135deg, #005885, #0077b5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 119, 181, 0.4);
+}
+
+.linkedin-connect-btn:active {
+  transform: translateY(0);
+}
+
+.linkedin-connect-btn .linkedin-icon {
+  flex-shrink: 0;
+}
+
+.linkedin-connect-btn .btn-text {
+  white-space: nowrap;
+}
+
+/* Connected State */
+.linkedin-connected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.linkedin-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 0.5rem 1rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.connected {
+  background: var(--success-color);
+  box-shadow: 0 0 8px var(--success-color);
+  animation: statusPulse 2s infinite;
+}
+
+.status-dot.disconnected {
+  background: var(--text-muted);
+}
+
+@keyframes statusPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--success-color);
+  }
+
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 12px var(--success-color);
+  }
+}
+
+.status-text {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+/* Disconnect Button */
+.linkedin-disconnect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.linkedin-disconnect-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.linkedin-disconnect-btn:active {
+  transform: scale(0.95);
+}
+
+/* Snackbar container */
+.snackbar-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.snackbar {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 8px 32px var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideIn 0.3s ease;
+}
+
+.snackbar.hide {
+  animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.snackbar-message {
+  font-size: 0.875rem;
+  color: var(--text-primary);
 }

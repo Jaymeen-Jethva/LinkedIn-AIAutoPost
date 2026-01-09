@@ -700,6 +700,122 @@ class PostForm {
   }
 }
 
+// LinkedIn Connection Manager
+class LinkedInConnection {
+  constructor() {
+    this.connectBtn = document.getElementById('linkedinConnectBtn');
+    this.disconnectBtn = document.getElementById('linkedinDisconnectBtn');
+    this.connectedEl = document.getElementById('linkedinConnected');
+    this.disconnectedEl = document.getElementById('linkedinDisconnected');
+    this.snackbar = new Snackbar();
+    this.init();
+  }
+
+  init() {
+    // Check connection status on load
+    this.checkStatus();
+
+    // Handle URL params from OAuth redirect
+    this.handleOAuthRedirect();
+
+    // Setup button listeners
+    this.connectBtn?.addEventListener('click', () => this.connect());
+    this.disconnectBtn?.addEventListener('click', () => this.disconnect());
+  }
+
+  handleOAuthRedirect() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    if (urlParams.has('linkedin_connected')) {
+      this.snackbar.show('✅ Successfully connected to LinkedIn!', [], 5000);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      this.checkStatus();
+    }
+
+    if (urlParams.has('linkedin_error')) {
+      const error = urlParams.get('linkedin_error');
+      this.snackbar.show(`❌ LinkedIn connection failed: ${error}`, [], 6000);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
+  async checkStatus() {
+    try {
+      const response = await fetch('/linkedin/status');
+      const data = await response.json();
+
+      if (data.connected) {
+        this.showConnected();
+      } else {
+        this.showDisconnected();
+      }
+    } catch (err) {
+      console.error('Failed to check LinkedIn status:', err);
+      this.showDisconnected();
+    }
+  }
+
+  async connect() {
+    try {
+      // Disable button and show loading state
+      this.connectBtn.disabled = true;
+      const originalHTML = this.connectBtn.innerHTML;
+      this.connectBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+      const response = await fetch('/linkedin/connect', { method: 'POST' });
+      const data = await response.json();
+
+      if (data.authorization_url) {
+        // Redirect to LinkedIn OAuth
+        window.location.href = data.authorization_url;
+      } else {
+        throw new Error(data.detail || 'Failed to get authorization URL');
+      }
+    } catch (err) {
+      this.snackbar.show(`❌ ${err.message}`, [], 5000);
+      // Reset button
+      this.connectBtn.disabled = false;
+      this.connectBtn.innerHTML = originalHTML;
+    }
+  }
+
+  async disconnect() {
+    if (!confirm('Are you sure you want to disconnect LinkedIn?')) {
+      return;
+    }
+
+    try {
+      this.disconnectBtn.disabled = true;
+
+      const response = await fetch('/linkedin/disconnect', { method: 'POST' });
+      const data = await response.json();
+
+      if (data.success) {
+        this.snackbar.show('✅ Disconnected from LinkedIn', [], 4000);
+        this.showDisconnected();
+      } else {
+        throw new Error(data.detail || 'Disconnect failed');
+      }
+    } catch (err) {
+      this.snackbar.show(`❌ ${err.message}`, [], 5000);
+    } finally {
+      this.disconnectBtn.disabled = false;
+    }
+  }
+
+  showConnected() {
+    if (this.connectedEl) this.connectedEl.style.display = 'flex';
+    if (this.disconnectedEl) this.disconnectedEl.style.display = 'none';
+  }
+
+  showDisconnected() {
+    if (this.connectedEl) this.connectedEl.style.display = 'none';
+    if (this.disconnectedEl) this.disconnectedEl.style.display = 'flex';
+  }
+}
+
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
   new ThemeManager();
@@ -708,5 +824,6 @@ document.addEventListener('DOMContentLoaded', () => {
   new ImageToggle('includeImageToggle');
   new LivePreview('previewContent');
   new PostForm();
+  new LinkedInConnection();
 
 });

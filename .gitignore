@@ -1,0 +1,6 @@
+.env
+__pycache__/
+.local/
+generated_images/
+
+token.json
