@@ -42,6 +42,50 @@ class ApprovalRequest(BaseModel):
     approved: bool
     feedback: Optional[str] = ""
 
+
+# Input validation constants
+MIN_TOPIC_LENGTH = 10
+MAX_TOPIC_LENGTH = 500
+ALLOWED_POST_TYPES = ["ai_news", "personal_milestone"]
+# Characters that might cause issues in prompts
+DANGEROUS_CHARS_PATTERN = r'[<>{}|\\^`]'
+
+
+def validate_topic(topic: str) -> tuple[bool, str]:
+    """
+    Validate topic input for length and dangerous characters.
+    Returns (is_valid, error_message)
+    """
+    import re
+    
+    # Check if empty
+    if not topic or not topic.strip():
+        return False, "Topic cannot be empty"
+    
+    # Check minimum length
+    if len(topic.strip()) < MIN_TOPIC_LENGTH:
+        return False, f"Topic must be at least {MIN_TOPIC_LENGTH} characters long"
+    
+    # Check maximum length
+    if len(topic) > MAX_TOPIC_LENGTH:
+        return False, f"Topic must not exceed {MAX_TOPIC_LENGTH} characters"
+    
+    # Check for dangerous characters
+    if re.search(DANGEROUS_CHARS_PATTERN, topic):
+        return False, "Topic contains invalid characters. Please remove: < > { } | \\ ^ `"
+    
+    return True, ""
+
+
+def validate_post_type(post_type: str) -> tuple[bool, str]:
+    """
+    Validate post type against allowed values.
+    Returns (is_valid, error_message)
+    """
+    if post_type not in ALLOWED_POST_TYPES:
+        return False, f"Invalid post type. Must be one of: {', '.join(ALLOWED_POST_TYPES)}"
+    return True, ""
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Homepage with topic input form"""
@@ -50,6 +94,15 @@ async def home(request: Request):
 @app.post("/generate-post")
 async def generate_post(post_request: PostRequest):
     """Generate a LinkedIn post based on user input"""
+    # Validate input before processing
+    is_valid, error_msg = validate_topic(post_request.topic)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    is_valid, error_msg = validate_post_type(post_request.post_type)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     try:
         # Create a session ID
         import uuid
@@ -57,7 +110,7 @@ async def generate_post(post_request: PostRequest):
         
         # Run the workflow until user approval is needed
         result_state = linkedin_workflow.run_workflow(
-            topic=post_request.topic,
+            topic=post_request.topic.strip(),  # Clean input
             post_type=post_request.post_type,
             user_preferences=post_request.user_preferences,
             include_image=post_request.include_image

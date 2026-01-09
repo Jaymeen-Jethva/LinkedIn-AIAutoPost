@@ -1,0 +1,24 @@
+# LinkedIn AI Post Automation - Dependencies
+# Generated from pyproject.toml
+# Python >= 3.11 required
+
+# Web Framework
+fastapi>=0.117.1
+uvicorn>=0.37.0
+jinja2>=3.1.6
+
+# AI & LLM
+google-genai>=1.39.1
+langgraph>=0.6.7
+
+# Web Search
+tavily-python>=0.3.3
+
+# Utilities
+aiofiles>=24.1.0
+pillow>=11.3.0
+python-dotenv>=1.1.1
+requests>=2.32.5
+
+# Retry Logic (added for transient failure handling)
+tenacity>=8.2.0

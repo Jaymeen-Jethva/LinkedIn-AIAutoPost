@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from langgraph.graph.state import CompiledStateGraph
 import requests
-from gemini_client import generate_linkedin_post, generate_linkedin_post_with_search, revise_linkedin_post, generate_image_with_gemini, LinkedInPost
+from gemini_client import generate_linkedin_post, generate_linkedin_post_with_search, revise_linkedin_post, generate_image_with_gemini, generate_image_with_pollinations, LinkedInPost
 from linkedin_api import linkedin_api
 from tavily_search import tavily_search
 
@@ -134,11 +134,17 @@ class LinkedInWorkflow:
                 state.image_path = image_path
                 print(f"Image generated with Gemini and saved to {image_path}")
             else:
-                # Fallback to nano banana API
-                print("Gemini image generation failed, trying nano banana...")
-                nano_banana_success = self._generate_with_nano_banana(state)
-                if not nano_banana_success:
-                    print("Both image generation methods failed, continuing without image")
+                # Fallback to Pollinations.ai
+                print("Gemini image generation failed, trying Pollinations.ai...")
+                pollinations_success = generate_image_with_pollinations(
+                    state.generated_post.image_prompt,
+                    image_path
+                )
+                if pollinations_success:
+                    state.image_path = image_path
+                    print(f"Image generated with Pollinations.ai and saved to {image_path}")
+                else:
+                    print("All image generation methods failed, continuing without image")
                     state.image_path = ""
             
             return state
@@ -146,28 +152,6 @@ class LinkedInWorkflow:
             state.error = f"Image generation failed: {str(e)}"
             print(f"Error generating image: {e}")
             return state
-    
-    def _generate_with_nano_banana(self, state: WorkflowState) -> bool:
-        """Generate image using nano banana API"""
-        try:
-            # Nano banana API endpoint (placeholder - replace with actual endpoint)
-            api_endpoint = "https://api.nanobana.com/generate"  # This is a placeholder
-            
-            payload = {
-                "prompt": state.generated_post.image_prompt,
-                "width": 1024,
-                "height": 1024,
-                "style": "professional"
-            }
-            
-            # Note: This is a placeholder implementation
-            # You'll need to replace with actual nano banana API integration
-            print("Note: Nano banana integration is a placeholder - replace with actual API")
-            return False
-            
-        except Exception as e:
-            print(f"Nano banana API error: {e}")
-            return False
     
     def _await_user_approval(self, state: WorkflowState) -> WorkflowState:
         """Wait for user approval - this will be handled by the web interface"""

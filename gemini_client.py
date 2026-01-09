@@ -6,9 +6,28 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from tavily_search import tavily_search, create_search_enhanced_prompt
 
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Retry decorator for Gemini API calls - handles transient failures
+def gemini_retry():
+    """Retry decorator with exponential backoff for Gemini API calls"""
+    return retry(
+        stop=stop_after_attempt(3),  # Max 3 attempts
+        wait=wait_exponential(multiplier=1, min=2, max=10),  # 2s, 4s, 8s backoff
+        retry=retry_if_exception_type((ConnectionError, TimeoutError, Exception)),
+        before_sleep=lambda retry_state: logger.warning(
+            f"Gemini API call failed, retrying in {retry_state.next_action.sleep} seconds... "
+            f"(Attempt {retry_state.attempt_number}/3)"
+        ),
+        reraise=True
+    )
 
 # IMPORTANT: KEEP THIS COMMENT
 # Follow these instructions when using this blueprint:
@@ -26,6 +45,23 @@ class LinkedInPost(BaseModel):
     hashtags: list[str]
     image_prompt: Optional[str] = None  # Make image_prompt optional
     post_type: str  # "ai_news" or "personal_milestone"
+
+
+@gemini_retry()
+def _generate_with_retry(model: str, user_prompt: str, system_prompt: str, response_schema=None):
+    """Internal function that wraps Gemini API calls with retry logic"""
+    logger.info(f"Calling Gemini model: {model}")
+    return client.models.generate_content(
+        model=model,
+        contents=[
+            types.Content(role="user", parts=[types.Part(text=user_prompt)])
+        ],
+        config=types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            response_mime_type="application/json",
+            response_schema=response_schema,
+        ),
+    )
 
 
 def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = {}, include_image: bool = True, use_web_search: bool = True) -> LinkedInPost:
@@ -104,16 +140,11 @@ def generate_linkedin_post(topic: str, post_type: str, user_preferences: dict = 
             properties=response_schema_parts
         )
 
-        response = client.models.generate_content(
+        response = _generate_with_retry(
             model="gemini-2.5-flash",
-            contents=[
-                types.Content(role="user", parts=[types.Part(text=user_prompt)])
-            ],
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-                response_schema=response_schema,
-            ),
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            response_schema=response_schema
         )
 
         raw_json = response.text
@@ -187,16 +218,11 @@ def revise_linkedin_post(original_post: LinkedInPost, feedback: str) -> LinkedIn
     """
 
     try:
-        response = client.models.generate_content(
+        response = _generate_with_retry(
             model="gemini-2.5-pro",
-            contents=[
-                types.Content(role="user", parts=[types.Part(text=user_prompt)])
-            ],
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-                response_schema=LinkedInPost,
-            ),
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            response_schema=LinkedInPost
         )
 
         raw_json = response.text
@@ -215,7 +241,7 @@ def generate_image_with_gemini(prompt: str, image_path: str) -> bool:
     try:
         response = client.models.generate_content(
             # IMPORTANT: only this gemini model supports image generation
-            model="gemini-2.0-flash-preview-image-generation",
+            model="gemini-2.0-flash-exp",
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_modalities=['TEXT', 'IMAGE']))
@@ -237,4 +263,38 @@ def generate_image_with_gemini(prompt: str, image_path: str) -> bool:
         return False
     except Exception as e:
         print(f"Failed to generate image with Gemini: {e}")
+        return False
+
+
+def generate_image_with_pollinations(prompt: str, image_path: str) -> bool:
+    """
+    Generate an image using Pollinations.ai (fallback)
+    Pollinations is a free, URL-based image generation service.
+    """
+    import requests
+    import time
+    import logging
+    
+    try:
+        # Construct Pollinations URL
+        # We encode the prompt and add detailed parameters for better quality
+        # Using flux model which is excellent for photorealism
+        encoded_prompt = requests.utils.quote(f"{prompt}, high quality, detailed, 8k, photorealistic")
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&model=flux&nologo=true&seed={int(time.time())}"
+        
+        logging.info(f"Generating image with Pollinations: {url}")
+        
+        response = requests.get(url, timeout=30)
+        
+        if response.status_code == 200:
+            with open(image_path, 'wb') as f:
+                f.write(response.content)
+            logging.info(f"Image generated with Pollinations and saved to {image_path}")
+            return True
+        else:
+            logging.error(f"Pollinations API error: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        logging.error(f"Failed to generate image with Pollinations: {e}")
         return False

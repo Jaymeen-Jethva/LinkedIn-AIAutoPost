@@ -1,4 +1,10 @@
 // Theme Management
+
+// Validation constants (must match server-side)
+const MIN_TOPIC_LENGTH = 10;
+const MAX_TOPIC_LENGTH = 500;
+const DANGEROUS_CHARS_PATTERN = /[<>{}|\\^`]/;
+
 class ThemeManager {
   constructor() {
     this.theme = localStorage.getItem('theme') || 'dark';
@@ -77,6 +83,107 @@ class CharacterCounter {
     } else {
       this.progress.style.stroke = 'var(--primary-color)';
     }
+  }
+}
+
+// Loading Animation Controller
+class LoadingAnimation {
+  constructor() {
+    this.steps = document.querySelectorAll('.loading-step');
+    this.progressFill = document.getElementById('loadingProgressFill');
+    this.mainText = document.getElementById('loadingMainText');
+    this.subText = document.getElementById('loadingSubtext');
+    this.currentStep = 0;
+    this.intervalId = null;
+    this.includeImage = true;
+  }
+
+  start(includeImage = true) {
+    this.includeImage = includeImage;
+    this.currentStep = 0;
+    this.updateStep(0);
+
+    // Simulate progress through steps
+    const stepDurations = includeImage
+      ? [3000, 8000, 15000, 5000]  // With image
+      : [3000, 8000, 2000];        // Without image (skip image step)
+
+    let elapsed = 0;
+    const totalTime = stepDurations.reduce((a, b) => a + b, 0);
+
+    // Start progress bar animation
+    this.animateProgress(totalTime);
+
+    // Advance through steps based on estimated timing
+    stepDurations.forEach((duration, index) => {
+      setTimeout(() => {
+        if (this.intervalId !== null) {
+          this.updateStep(includeImage ? index : (index >= 2 ? 3 : index));
+        }
+      }, elapsed);
+      elapsed += duration;
+    });
+
+    this.intervalId = 1; // Mark as running
+  }
+
+  stop() {
+    this.intervalId = null;
+    // Reset progress
+    if (this.progressFill) {
+      this.progressFill.style.width = '100%';
+    }
+    // Mark all as completed briefly
+    this.steps.forEach(step => {
+      step.classList.remove('active');
+      step.classList.add('completed');
+    });
+  }
+
+  updateStep(stepIndex) {
+    const messages = [
+      { main: 'Searching the web...', sub: 'Finding latest information and trends' },
+      { main: 'Generating content...', sub: 'AI is crafting your perfect post' },
+      { main: 'Creating image...', sub: 'Generating a stunning visual' },
+      { main: 'Finalizing...', sub: 'Almost there!' }
+    ];
+
+    this.steps.forEach((step, index) => {
+      step.classList.remove('active', 'completed');
+      if (index < stepIndex) {
+        step.classList.add('completed');
+      } else if (index === stepIndex) {
+        step.classList.add('active');
+      }
+    });
+
+    if (this.mainText && messages[stepIndex]) {
+      this.mainText.textContent = messages[stepIndex].main;
+    }
+    if (this.subText && messages[stepIndex]) {
+      this.subText.textContent = messages[stepIndex].sub;
+    }
+  }
+
+  animateProgress(totalTime) {
+    if (!this.progressFill) return;
+
+    this.progressFill.style.width = '0%';
+    let startTime = Date.now();
+
+    const animate = () => {
+      if (this.intervalId === null) return;
+
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / totalTime) * 95, 95); // Cap at 95%
+      this.progressFill.style.width = progress + '%';
+
+      if (progress < 95) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
   }
 }
 
@@ -169,24 +276,24 @@ class LivePreview {
     preferencesInput?.addEventListener('input', () => this.updatePreview());
   }
 
-    updatePreview() {
-        const topic = document.getElementById('topic')?.value || '';
-        const postType = document.getElementById('post_type')?.value || 'ai_news';
-        const preferences = document.getElementById('preferences')?.value || '';
+  updatePreview() {
+    const topic = document.getElementById('topic')?.value || '';
+    const postType = document.getElementById('post_type')?.value || 'ai_news';
+    const preferences = document.getElementById('preferences')?.value || '';
 
-        if (topic.length > 10) {
-            this.showGeneratedPreview(topic, postType, preferences);
-        } else {
-            this.showPlaceholder();
-        }
+    if (topic.length > 10) {
+      this.showGeneratedPreview(topic, postType, preferences);
+    } else {
+      this.showPlaceholder();
     }
+  }
 
-    showSearchStatus(show) {
-        const searchStatus = document.getElementById('searchStatus');
-        if (searchStatus) {
-            searchStatus.style.display = show ? 'flex' : 'none';
-        }
+  showSearchStatus(show) {
+    const searchStatus = document.getElementById('searchStatus');
+    if (searchStatus) {
+      searchStatus.style.display = show ? 'flex' : 'none';
     }
+  }
 
   showPlaceholder() {
     if (!this.preview) return;
@@ -222,10 +329,10 @@ class LivePreview {
         </div>
 
         ${includeImage
-          ? `<div style="margin-bottom: 1rem;">
+        ? `<div style="margin-bottom: 1rem;">
               <div class="skeleton skeleton-image" style="height: 200px; border-radius: 12px;"></div>
             </div>`
-          : `<div style="margin-bottom: 1rem;">
+        : `<div style="margin-bottom: 1rem;">
               <div style="background: var(--bg-tertiary); border-radius: 12px; padding: 2rem; text-align: center; color: var(--text-muted);">
                 <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📝</div>
                 <p style="margin: 0; font-size: 0.875rem;">Text-only post</p>
@@ -305,17 +412,16 @@ class Snackbar {
     snackbar.className = 'snackbar';
     snackbar.innerHTML = `
       <div class="snackbar-message">${message}</div>
-      ${
-        actions.length > 0
-          ? `<div class="snackbar-actions">
+      ${actions.length > 0
+        ? `<div class="snackbar-actions">
               ${actions
-                .map(
-                  (action) =>
-                    `<button class="btn btn-sm btn-primary" onclick="${action.callback}">${action.label}</button>`
-                )
-                .join('')}
+          .map(
+            (action) =>
+              `<button class="btn btn-sm btn-primary" onclick="${action.callback}">${action.label}</button>`
+          )
+          .join('')}
             </div>`
-          : ''
+        : ''
       }
     `;
     this.container.appendChild(snackbar);
@@ -336,6 +442,7 @@ class PostForm {
     this.errorAlert = document.getElementById('error');
     this.currentSessionId = null;
     this.snackbar = new Snackbar();
+    this.loadingAnimation = new LoadingAnimation();
     this.init();
   }
 
@@ -343,47 +450,59 @@ class PostForm {
     this.form?.addEventListener('submit', (e) => this.handleSubmit(e));
   }
 
-    async handleSubmit(e) {
-        e.preventDefault();
-        const formData = new FormData(this.form);
-        const preferences = formData.get('preferences');
-        const includeImage = formData.get('include_image') === 'on'; // Correctly get checkbox state
+  async handleSubmit(e) {
+    e.preventDefault();
+    const formData = new FormData(this.form);
+    const topic = formData.get('topic')?.trim() || '';
+    const preferences = formData.get('preferences');
+    const includeImage = formData.get('include_image') === 'on';
 
-        const postData = {
-            topic: formData.get('topic'),
-            post_type: formData.get('post_type'),
-            user_preferences: preferences ? { general: preferences } : {},
-            include_image: includeImage,
-        };
-
-        this.showLoading(true);
-        this.hideError();
-
-        // Show search status if web search is likely to be used
-        const preview = new LivePreview('previewContent');
-        preview.showSearchStatus(true);
-
-        try {
-            const response = await fetch('/generate-post', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(postData),
-            });
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.detail || 'Generation failed');
-            }
-            this.currentSessionId = result.session_id;
-            this.showPreview(result);
-        } catch (err) {
-            this.showError(err.message);
-        } finally {
-            this.showLoading(false);
-            preview.showSearchStatus(false);
-        }
+    // Client-side validation
+    const validationError = this.validateInput(topic);
+    if (validationError) {
+      this.showError(validationError);
+      return;
     }
+
+    const postData = {
+      topic: topic,
+      post_type: formData.get('post_type'),
+      user_preferences: preferences ? { general: preferences } : {},
+      include_image: includeImage,
+    };
+
+    this.showLoading(true);
+    this.hideError();
+
+    // Start loading animation
+    this.loadingAnimation.start(includeImage);
+
+    // Show search status if web search is likely to be used
+    const preview = new LivePreview('previewContent');
+    preview.showSearchStatus(true);
+
+    try {
+      const response = await fetch('/generate-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.detail || 'Generation failed');
+      }
+      this.currentSessionId = result.session_id;
+      this.showPreview(result);
+    } catch (err) {
+      this.showError(err.message);
+    } finally {
+      this.loadingAnimation.stop();
+      this.showLoading(false);
+      preview.showSearchStatus(false);
+    }
+  }
 
   showPreview(data) {
     const previewHtml = `
@@ -397,14 +516,13 @@ class PostForm {
             ${data.hashtags.map((tag) => `<span class="badge bg-primary me-1">${tag}</span>`).join('')}
           </p>
 
-          ${
-            data.image_path
-              ? `<h6 class="card-subtitle mb-2 text-muted mt-3">Generated Image:</h6>
+          ${data.image_path
+        ? `<h6 class="card-subtitle mb-2 text-muted mt-3">Generated Image:</h6>
                  <img src="/images/${data.image_path.split('/').pop()}" class="img-fluid rounded" alt="Generated image">`
-              : `<h6 class="card-subtitle mb-2 text-muted mt-3">Image Prompt:</h6>
+        : `<h6 class="card-subtitle mb-2 text-muted mt-3">Image Prompt:</h6>
                  <p class="card-text text-muted">${data.image_prompt}</p>
                  <p class="text-warning"><small>⚠️ Image generation failed, but will be retried if you approve.</small></p>`
-          }
+      }
         </div>
       </div>
     `;
@@ -429,6 +547,22 @@ class PostForm {
     if (this.errorAlert) {
       this.errorAlert.style.display = 'none';
     }
+  }
+
+  validateInput(topic) {
+    if (!topic) {
+      return 'Please enter a topic for your post';
+    }
+    if (topic.length < MIN_TOPIC_LENGTH) {
+      return `Topic must be at least ${MIN_TOPIC_LENGTH} characters long (currently ${topic.length})`;
+    }
+    if (topic.length > MAX_TOPIC_LENGTH) {
+      return `Topic must not exceed ${MAX_TOPIC_LENGTH} characters (currently ${topic.length})`;
+    }
+    if (DANGEROUS_CHARS_PATTERN.test(topic)) {
+      return 'Topic contains invalid characters. Please remove: < > { } | \\ ^ `';
+    }
+    return null;
   }
 }
 
