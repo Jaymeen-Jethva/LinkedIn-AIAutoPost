@@ -1,4 +1,4 @@
-# 🚀 LinkedIn AI Post Automation
+# 🚀 LinkedIn Post Automation Using AI
 
 <div align="center">
   <p><strong>Generate stunning LinkedIn posts with AI-powered content and images</strong></p>
