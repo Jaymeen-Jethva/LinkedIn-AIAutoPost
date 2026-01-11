@@ -4,3 +4,4 @@ __pycache__/
 generated_images/
 
 token.json
+frontend/node_modules/

@@ -239,9 +239,11 @@ def revise_linkedin_post(original_post: LinkedInPost, feedback: str) -> LinkedIn
 def generate_image_with_gemini(prompt: str, image_path: str) -> bool:
     """Generate an image using Gemini's image generation capability"""
     try:
+        # List available models for debugging (only on first failure)
+        IMAGE_MODEL = "gemini-2.5-flash-image"  # Updated model name
+        
         response = client.models.generate_content(
-            # IMPORTANT: only this gemini model supports image generation
-            model="gemini-2.0-flash-exp",
+            model=IMAGE_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 response_modalities=['TEXT', 'IMAGE']))
@@ -263,6 +265,15 @@ def generate_image_with_gemini(prompt: str, image_path: str) -> bool:
         return False
     except Exception as e:
         print(f"Failed to generate image with Gemini: {e}")
+        # List available image generation models for debugging
+        try:
+            print("Available Gemini models supporting image generation:")
+            for model in client.models.list():
+                model_name = model.name if hasattr(model, 'name') else str(model)
+                if 'image' in model_name.lower():
+                    print(f"  - {model_name}")
+        except Exception as list_error:
+            print(f"Could not list models: {list_error}")
         return False
 
 
