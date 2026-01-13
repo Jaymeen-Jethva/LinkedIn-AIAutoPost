@@ -7,7 +7,7 @@ from google.genai import types
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from tavily_search import tavily_search, create_search_enhanced_prompt
+from app.tools.tavily_tool import tavily_search, create_search_enhanced_prompt
 
 load_dotenv()
 

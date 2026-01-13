@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from typing import Optional, Dict, Any
-from token_storage import load_token
+from app.clients.token_client import load_token
 
 class LinkedInAPI:
     """LinkedIn API integration for posting content"""

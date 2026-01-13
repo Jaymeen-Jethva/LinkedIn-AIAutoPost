@@ -2,16 +2,20 @@
 
 <div align="center">
   <p><strong>Generate stunning LinkedIn posts with AI-powered content and images</strong></p>
-  <img src="https://img.shields.io/badge/Status-Active-success?style=for-the-badge&logo=fastapi" alt="Status">
+  <img src="https://img.shields.io/badge/Backend-FastAPI-success?style=for-the-badge&logo=fastapi" alt="Backend">
+  <img src="https://img.shields.io/badge/Frontend-React_Vite-blue?style=for-the-badge&logo=react" alt="Frontend">
   <img src="https://img.shields.io/badge/AI-Gemini-blue?style=for-the-badge&logo=google" alt="AI">
-  <img src="https://img.shields.io/badge/UI-Glassmorphism-purple?style=for-the-badge" alt="UI">
 </div>
 
 ---
 
 ## ✨ Overview
 
-An intelligent LinkedIn automation system that uses **Google Gemini AI** to generate personalized, engaging posts with AI-created images. Features a modern **glassmorphism UI** and workflow orchestration using **LangGraph**.
+An intelligent LinkedIn automation system that uses **Google Gemini AI** to generate personalized, engaging posts with AI-created images. 
+
+**New Architecture:**
+- **Backend**: Robust Python FastAPI service handling AI generation, LinkedIn OAuth, and workflow orchestration.
+- **Frontend**: Modern React + Vite application (Glassmorphism UI) for a premium user experience.
 
 ### 🎯 Key Features
 
@@ -22,7 +26,7 @@ An intelligent LinkedIn automation system that uses **Google Gemini AI** to gene
 | 🎨 Smart Images | AI-generated visuals with Gemini 2.0 Flash |
 | 🔄 Approval Workflow | Review and revise content before posting |
 | 🔗 LinkedIn OAuth | Connect your account directly from the UI |
-| 🌙 Dark/Light Theme | Beautiful glassmorphism interface |
+| 📦 Modular Design | Scalable architecture with separated API, Models, and Services |
 
 ---
 
@@ -30,24 +34,22 @@ An intelligent LinkedIn automation system that uses **Google Gemini AI** to gene
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.11+
+- Node.js 18+ (for frontend)
 - Google Gemini API Key
 - LinkedIn Developer App (for real posting)
 
-### Installation
+### 1. Backend Setup
 
 ```bash
-# Clone and setup
-git clone <repository-url>
-cd linkedin-ai-autopost
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Configuration
-
-Create a `.env` file:
+**Configuration (.env):**
+Create `backend/.env` file:
 
 ```env
 # Required
@@ -59,69 +61,77 @@ TAVILY_API_KEY=your_tavily_api_key_here
 # Required for LinkedIn posting
 LINKEDIN_CLIENT_ID=your_client_id
 LINKEDIN_CLIENT_SECRET=your_client_secret
+LINKEDIN_REDIRECT_URI=http://localhost:8000/linkedin/callback
+
+# Frontend URL (CORS)
+FRONTEND_URL=http://localhost:3000
 ```
 
-> **Note**: Get LinkedIn credentials from [LinkedIn Developers](https://www.linkedin.com/developers/). Add `http://localhost:8000/linkedin/callback` to your app's Authorized redirect URLs.
-
-### Run
-
+**Run Backend:**
 ```bash
-python main.py
+# From root directory
+cd backend
+python -m uvicorn app.main:app --reload --port 8000
 ```
-
-Open **http://localhost:8000** in your browser.
+Server running at `http://localhost:8000` (Swagger UI at `/docs`)
 
 ---
 
-## 📖 Usage
+### 2. Frontend Setup
 
-1. **Connect LinkedIn** - Click "Connect LinkedIn" button in the header
-2. **Enter Topic** - Describe what you want to post about
-3. **Select Style** - Choose between AI News or Personal Milestone
-4. **Generate** - Click "Generate Post" and wait for AI magic
-5. **Review** - Check the preview, request revisions if needed
-6. **Post** - Approve to publish directly to LinkedIn
+```bash
+cd frontend
+npm install
+```
+
+**Run Frontend:**
+```bash
+npm run dev
+```
+App running at `http://localhost:3000`
 
 ---
 
 ## 🏗️ Project Structure
 
 ```
-linkedin-ai-autopost/
-├── main.py                 # FastAPI application (port 8000)
-├── gemini_client.py        # Gemini AI integration
-├── linkedin_workflow.py    # LangGraph workflow
-├── linkedin_api.py         # LinkedIn posting
-├── token_storage.py        # OAuth token management
-├── tavily_search.py        # Web search integration
-├── templates/              # HTML templates
-├── static/                 # CSS & JavaScript
-└── generated_images/       # AI-generated images
+LinkedInAIAutoPost/
+├── backend/                # Python FastAPI Backend
+│   ├── .env                # Environment config
+│   ├── app/
+│   │   ├── main.py         # App entry point & health check
+│   │   ├── api/            # Router endpoints (LinkedIn, Posts)
+│   │   ├── models/         # Pydantic data models
+│   │   ├── services/       # Business logic (Workflow, Gemini)
+│   │   ├── clients/        # External clients (Tokens, DB)
+│   │   └── tools/          # AI Tools (Tavily)
+│   └── tests/              # Test suite
+│
+└── frontend/               # React + Vite Frontend
+    ├── src/
+    ├── public/
+    └── package.json
 ```
 
-### API Endpoints
+## 📖 Usage Flow
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/` | GET | Web UI |
-| `/generate-post` | POST | Generate AI content |
-| `/approve-post` | POST | Approve or revise post |
-| `/linkedin/connect` | POST | Start OAuth flow |
-| `/linkedin/callback` | GET | OAuth callback |
-| `/linkedin/status` | GET | Check connection status |
-| `/linkedin/disconnect` | POST | Disconnect account |
+1. **Connect LinkedIn** - Click "Connect LinkedIn" on the frontend (OAuth flow).
+2. **Enter Topic** - Describe your post idea (e.g., "Future of AI Agents").
+3. **Select Style** - AI News or Personal Milestone.
+4. **Generate** - Backend workflow orchestrates research, writing, and image generation.
+5. **Review** - Preview the content and image in the UI.
+6. **Post** - Approve to publish directly to your LinkedIn profile.
 
 ---
 
-## 🔧 Configuration
+## 🔧 Configuration Reference
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | ✅ | Google Gemini API key |
-| `TAVILY_API_KEY` | ❌ | Tavily search API key |
 | `LINKEDIN_CLIENT_ID` | ❌ | LinkedIn OAuth Client ID |
 | `LINKEDIN_CLIENT_SECRET` | ❌ | LinkedIn OAuth Client Secret |
+| `TAVILY_API_KEY` | ❌ | Tavily search API key (optional) |
+| `FRONTEND_URL` | ❌ | Allowed CORS origin (default: localhost:3000) |
 
-Without LinkedIn credentials, the app runs in **simulation mode** (posts are logged but not published).
-
-
+> **Note**: Without LinkedIn credentials, the app runs in **simulation mode** (logs post to console instead of publishing).
