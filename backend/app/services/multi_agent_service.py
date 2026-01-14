@@ -26,6 +26,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# Helper for Gemini content extraction
+def extract_clean_content(response: Any) -> str:
+    """Robustly extract string content from Gemini/LangChain response"""
+    if hasattr(response, 'content'):
+        content = response.content
+    else:
+        content = str(response)
+        
+    # Handle list of parts (common in newer Gemini versions)
+    if isinstance(content, list):
+        # Join text parts
+        text_parts = []
+        for part in content:
+            if isinstance(part, str):
+                text_parts.append(part)
+            elif isinstance(part, dict) and 'text' in part:
+                text_parts.append(part['text'])
+            elif hasattr(part, 'text'):
+                text_parts.append(part.text)
+        content = "\n".join(text_parts)
+        
+    return str(content)
+
+
 # ==================== State Definitions ====================
 
 class AgentState(BaseModel):
@@ -132,7 +156,7 @@ class ResearchAgent:
         # Parse response
         try:
             # Handle AIMessage content
-            content = response.content if hasattr(response, 'content') else str(response)
+            content = extract_clean_content(response)
             # Try to extract JSON from the response
             content = content.strip()
             if content.startswith("```json"):
@@ -208,7 +232,8 @@ class StrategyAgent:
         })
         
         try:
-            content = response.content if hasattr(response, 'content') else str(response)
+            content = extract_clean_content(response)
+            # Try to extract JSON from the response
             content = content.strip()
             if content.startswith("```json"):
                 content = content[7:]
@@ -217,13 +242,23 @@ class StrategyAgent:
             if content.endswith("```"):
                 content = content[:-3]
             result = json.loads(content.strip())
-            state.target_audience = result.get("target_audience", "")
-            state.tone_guidelines = result.get("tone_guidelines", "")
-            state.content_outline = result.get("content_outline", "")
+            
+            # Robustly handle types
+            state.target_audience = str(result.get("target_audience", ""))
+            state.tone_guidelines = str(result.get("tone_guidelines", ""))
+            
+            # Handle content_outline - ensure string
+            outline = result.get("content_outline", "")
+            if isinstance(outline, (dict, list)):
+                state.content_outline = json.dumps(outline, indent=2)
+            else:
+                state.content_outline = str(outline)
+                
             state.content_strategy = json.dumps(result)
         except Exception as e:
             logger.warning(f"Failed to parse strategy response as JSON: {e}")
             state.content_strategy = content if content else "Strategy developed."
+            state.content_outline = content if content else "No outline."
         
         # Safely log truncated outline
         outline_preview = str(state.content_outline)[:100] if state.content_outline else "Outline created"
@@ -302,7 +337,8 @@ class WriterAgent:
             "revision_context": revision_context
         })
         
-        content = response.content if hasattr(response, 'content') else str(response)
+        
+        content = extract_clean_content(response)
         state.draft_content = content.strip()
         state.messages.append(AIMessage(content=f"Draft written: {len(state.draft_content)} characters"))
         logger.info(f"✅ {self.name}: Draft complete ({len(state.draft_content)} chars)")
@@ -366,7 +402,7 @@ class EditorAgent:
         })
         
         try:
-            content = response.content if hasattr(response, 'content') else str(response)
+            content = extract_clean_content(response)
             content = content.strip()
             if content.startswith("```json"):
                 content = content[7:]
@@ -451,7 +487,7 @@ class SEOAgent:
         })
         
         try:
-            content = response.content if hasattr(response, 'content') else str(response)
+            content = extract_clean_content(response)
             content = content.strip()
             if content.startswith("```json"):
                 content = content[7:]
@@ -525,7 +561,8 @@ class VisualDesignerAgent:
             "key_insights": ", ".join(state.key_insights[:3]) if state.key_insights else state.topic
         })
         
-        content = response.content if hasattr(response, 'content') else str(response)
+        
+        content = extract_clean_content(response)
         state.image_prompt = content.strip()
         state.messages.append(AIMessage(content=f"Visual concept created"))
         logger.info(f"✅ {self.name}: Image prompt generated ({len(state.image_prompt)} chars)")
@@ -683,10 +720,10 @@ class MultiAgentGeminiWorkflow:
         
         logger.info(f"\n{'='*60}")
         logger.info(f"✨ Post Generation Complete!")
-        logger.info(f"Revisions: {final_state.revision_count}")
+        logger.info(f"Revisions: {final_state.get('revision_count', 0)}")
         logger.info(f"{'='*60}\n")
         
-        return final_state.final_post
+        return final_state.get('final_post')
 
 
 # ==================== Usage Example ====================

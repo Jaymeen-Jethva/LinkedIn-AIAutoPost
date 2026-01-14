@@ -1,54 +1,38 @@
 import requests
 import json
-import os
 from typing import Optional, Dict, Any
-from app.clients.token_client import load_token
+
 
 class LinkedInAPI:
-    """LinkedIn API integration for posting content"""
+    """LinkedIn API integration for posting content (Stateless)"""
     
     def __init__(self):
         self.base_url = 'https://api.linkedin.com/v2'
-        self._load_credentials()
-    
-    def _load_credentials(self):
-        """Load credentials from token.json"""
-        token_data = load_token()
-        if token_data:
-            self.access_token = token_data.get('access_token')
-            self.person_id = token_data.get('person_id')
-        else:
-            self.access_token = None
-            self.person_id = None
-    
-    def reload_token(self):
-        """Reload token from file - useful after OAuth callback"""
-        self._load_credentials()
+
+    def post_text_content(self, text: str, access_token: str, person_id: str) -> Optional[str]:
+        """
+        Post text-only content to LinkedIn
+        Returns the URN of the created post or None if failed
+        """
+        if not access_token or not person_id:
+            print("Error: Access token or Person ID missing")
+            return None
+            
+        url = f"{self.base_url}/ugcPosts"
         
-    def is_configured(self) -> bool:
-        """Check if LinkedIn API is properly configured"""
-        return bool(self.access_token and self.person_id)
-    
-    def post_text_content(self, content: str, hashtags: list = None) -> Dict[str, Any]:
-        """Post text content to LinkedIn"""
-        if not self.is_configured():
-            return {
-                "success": False,
-                "error": "LinkedIn API not configured. Please add LINKEDIN_ACCESS_TOKEN and LINKEDIN_PERSON_ID to your environment variables."
-            }
-        
-        # Combine content and hashtags
-        full_content = content
-        if hashtags:
-            full_content += "\n\n" + " ".join(hashtags)
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0"
+        }
         
         payload = {
-            "author": f"urn:li:person:{self.person_id}",
+            "author": f"urn:li:person:{person_id}",
             "lifecycleState": "PUBLISHED",
             "specificContent": {
                 "com.linkedin.ugc.ShareContent": {
                     "shareCommentary": {
-                        "text": full_content
+                        "text": text
                     },
                     "shareMediaCategory": "NONE"
                 }
@@ -58,218 +42,145 @@ class LinkedInAPI:
             }
         }
         
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            urn = data.get("id")
+            print(f"✅ Successfully posted text to LinkedIn! URN: {urn}")
+            return urn
+        except Exception as e:
+            print(f"Error posting text content: {e}")
+            if hasattr(e, 'response') and e.response:
+                print(f"Response: {e.response.text}")
+            return None
+
+    def post_image_content(self, text: str, image_path: str, access_token: str, person_id: str) -> Optional[str]:
+        """
+        Post content with image to LinkedIn
+        1. Register upload
+        2. Upload image
+        3. Create post referencing image
+        """
+        if not access_token or not person_id:
+            return None
+            
+        # Step 1: Register Upload
+        asset_urn, upload_url = self._register_upload(access_token, person_id)
+        if not asset_urn or not upload_url:
+            return None
+            
+        # Step 2: Upload Image Binary
+        if not self._upload_image_binary(image_path, upload_url, access_token):
+            return None
+            
+        # Step 3: Create Post
+        return self._create_image_post(text, asset_urn, access_token, person_id)
+
+    def _register_upload(self, access_token: str, person_id: str) -> tuple[Optional[str], Optional[str]]:
+        """Register the image upload with LinkedIn to get upload URL and URN"""
+        url = f"{self.base_url}/assets?action=registerUpload"
+        
         headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json',
-            'X-Restli-Protocol-Version': '2.0.0'
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "registerUploadRequest": {
+                "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
+                "owner": f"urn:li:person:{person_id}",
+                "serviceRelationships": [
+                    {
+                        "relationshipType": "OWNER",
+                        "identifier": "urn:li:userGeneratedContent"
+                    }
+                ]
+            }
         }
         
         try:
-            response = requests.post(
-                f'{self.base_url}/ugcPosts',
-                headers=headers,
-                data=json.dumps(payload)
-            )
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
             
-            if response.status_code == 201:
-                return {
-                    "success": True,
-                    "post_id": response.json().get('id'),
-                    "message": "Post successfully published to LinkedIn!"
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"LinkedIn API error: {response.status_code} - {response.text}"
-                }
-                
+            # Extract upload URL and Asset URN
+            upload_mechanism = data['value']['uploadMechanism']['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']
+            upload_url = upload_mechanism['uploadUrl']
+            asset_urn = data['value']['asset']
+            
+            return asset_urn, upload_url
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to post to LinkedIn: {str(e)}"
-            }
-    
-    def post_content_with_image(self, content: str, image_path: str, hashtags: list = None) -> Dict[str, Any]:
-        """Post content with image to LinkedIn"""
-        if not self.is_configured():
-            return {
-                "success": False,
-                "error": "LinkedIn API not configured. Please add LINKEDIN_ACCESS_TOKEN and LINKEDIN_PERSON_ID to your environment variables."
-            }
+            print(f"Error registering upload: {e}")
+            return None, None
+
+    def _upload_image_binary(self, image_path: str, upload_url: str, access_token: str) -> bool:
+        """Upload the actual image file to the URL provided by LinkedIn"""
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/octet-stream"
+        }
         
         try:
-            # Step 1: Upload image
-            image_upload_result = self._upload_image(image_path)
-            if not image_upload_result.get("success"):
-                return image_upload_result
-            
-            # Step 2: Create post with image
-            full_content = content
-            if hashtags:
-                full_content += "\n\n" + " ".join(hashtags)
-            
-            payload = {
-                "author": f"urn:li:person:{self.person_id}",
-                "lifecycleState": "PUBLISHED",
-                "specificContent": {
-                    "com.linkedin.ugc.ShareContent": {
-                        "shareCommentary": {
-                            "text": full_content
-                        },
-                        "shareMediaCategory": "IMAGE",
-                        "media": [
-                            {
-                                "status": "READY",
-                                "description": {
-                                    "text": "Generated image for LinkedIn post"
-                                },
-                                "media": image_upload_result["asset_urn"],
-                                "title": {
-                                    "text": "LinkedIn Post Image"
-                                }
-                            }
-                        ]
-                    }
-                },
-                "visibility": {
-                    "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-                }
-            }
-            
-            headers = {
-                'Authorization': f'Bearer {self.access_token}',
-                'Content-Type': 'application/json',
-                'X-Restli-Protocol-Version': '2.0.0'
-            }
-            
-            response = requests.post(
-                f'{self.base_url}/ugcPosts',
-                headers=headers,
-                data=json.dumps(payload)
-            )
-            
-            if response.status_code == 201:
-                return {
-                    "success": True,
-                    "post_id": response.json().get('id'),
-                    "message": "Post with image successfully published to LinkedIn!"
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"LinkedIn API error: {response.status_code} - {response.text}"
-                }
+            with open(image_path, "rb") as f:
+                image_data = f.read()
                 
+            response = requests.put(upload_url, headers=headers, data=image_data)
+            response.raise_for_status()
+            return True
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to post to LinkedIn: {str(e)}"
-            }
-    
-    def _upload_image(self, image_path: str) -> Dict[str, Any]:
-        """Upload image to LinkedIn and return asset URN"""
-        try:
-            # Step 1: Register upload
-            register_payload = {
-                "registerUploadRequest": {
-                    "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
-                    "owner": f"urn:li:person:{self.person_id}",
-                    "serviceRelationships": [
+            print(f"Error uploading image binary: {e}")
+            return False
+
+    def _create_image_post(self, text: str, asset_urn: str, access_token: str, person_id: str) -> Optional[str]:
+        """Final step: Create the post referencing the uploaded image asset"""
+        url = f"{self.base_url}/ugcPosts"
+        
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0"
+        }
+        
+        payload = {
+            "author": f"urn:li:person:{person_id}",
+            "lifecycleState": "PUBLISHED",
+            "specificContent": {
+                "com.linkedin.ugc.ShareContent": {
+                    "shareCommentary": {
+                        "text": text
+                    },
+                    "shareMediaCategory": "IMAGE",
+                    "media": [
                         {
-                            "relationshipType": "OWNER",
-                            "identifier": "urn:li:userGeneratedContent"
+                            "status": "READY",
+                            "description": {
+                                "text": "Generated Image"
+                            },
+                            "media": asset_urn,
+                            "title": {
+                                "text": "LinkedIn Post Image"
+                            }
                         }
                     ]
                 }
+            },
+            "visibility": {
+                "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
             }
-            
-            headers = {
-                'Authorization': f'Bearer {self.access_token}',
-                'Content-Type': 'application/json'
-            }
-            
-            register_response = requests.post(
-                f'{self.base_url}/assets?action=registerUpload',
-                headers=headers,
-                data=json.dumps(register_payload)
-            )
-            
-            if register_response.status_code != 200:
-                return {
-                    "success": False,
-                    "error": f"Failed to register image upload: {register_response.status_code}"
-                }
-            
-            register_data = register_response.json()
-            upload_mechanism = register_data['value']['uploadMechanism']
-            upload_url = upload_mechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']['uploadUrl']
-            asset_urn = register_data['value']['asset']
-            
-            # Step 2: Upload the actual image
-            with open(image_path, 'rb') as image_file:
-                upload_headers = {
-                    'Authorization': f'Bearer {self.access_token}'
-                }
-                
-                upload_response = requests.post(
-                    upload_url,
-                    headers=upload_headers,
-                    files={'file': image_file}
-                )
-                
-                if upload_response.status_code != 201:
-                    return {
-                        "success": False,
-                        "error": f"Failed to upload image: {upload_response.status_code}"
-                    }
-            
-            return {
-                "success": True,
-                "asset_urn": asset_urn
-            }
-            
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Image upload failed: {str(e)}"
-            }
-    
-    def get_profile_info(self) -> Dict[str, Any]:
-        """Get basic profile information"""
-        if not self.is_configured():
-            return {
-                "success": False,
-                "error": "LinkedIn API not configured"
-            }
-        
-        headers = {
-            'Authorization': f'Bearer {self.access_token}',
-            'Content-Type': 'application/json'
         }
         
         try:
-            response = requests.get(
-                f'{self.base_url}/people/(id:{self.person_id})',
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                return {
-                    "success": True,
-                    "profile": response.json()
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": f"Failed to get profile: {response.status_code}"
-                }
-                
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            urn = data.get("id")
+            print(f"✅ Successfully posted image content! URN: {urn}")
+            return urn
         except Exception as e:
-            return {
-                "success": False,
-                "error": f"Profile fetch failed: {str(e)}"
-            }
+            print(f"Error creating image post: {e}")
+            return None
 
 
-# Global LinkedIn API instance
+# Global Stateless Instance
 linkedin_api = LinkedInAPI()

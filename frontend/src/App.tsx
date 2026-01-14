@@ -53,6 +53,14 @@ function App() {
 
         setIsLoading(true);
 
+
+        const userId = localStorage.getItem('user_id');
+        if (!userId) {
+            setError('Please connect to LinkedIn first to generate posts.');
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const result = await generatePost({
                 topic: topic.trim(),
@@ -61,7 +69,7 @@ function App() {
                 user_preferences: preferences ? { general: preferences } : {},
                 include_image: includeImage,
                 use_multi_agent: useMultiAgent,
-            });
+            }, userId);
 
             setCurrentPost(result);
             setIsModalOpen(true);

@@ -11,21 +11,13 @@ import os
 import secrets
 import requests
 from urllib.parse import urlencode
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse, RedirectResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 
-from app.models.linkedin_models import (
-    LinkedInConnectResponse,
-    LinkedInStatusResponse,
-    LinkedInDisconnectResponse
-)
-from app.clients.token_client import (
-    save_token,
-    delete_token,
-    get_token_status
-)
-from app.services.linkedin_service import linkedin_api
+from app.clients.db import get_db
+from app.services.user_service import UserService
 
 load_dotenv()
 
@@ -34,14 +26,30 @@ router = APIRouter()
 # LinkedIn OAuth Configuration
 LINKEDIN_CLIENT_ID = os.getenv('LINKEDIN_CLIENT_ID')
 LINKEDIN_CLIENT_SECRET = os.getenv('LINKEDIN_CLIENT_SECRET')
-LINKEDIN_REDIRECT_URI = "http://localhost:8000/linkedin/callback"
+LINKEDIN_REDIRECT_URI = os.getenv('LINKEDIN_REDIRECT_URI', "http://localhost:8000/linkedin/callback")
 LINKEDIN_SCOPE = "openid profile w_member_social email"
 
 
 @router.get("/status")
-async def linkedin_status():
+async def linkedin_status(user_id: str = Query(None), db: AsyncSession = Depends(get_db)):
     """Check if user is connected to LinkedIn"""
-    return JSONResponse(content=get_token_status())
+    if not user_id:
+        return JSONResponse(content={"connected": False, "message": "No user ID provided"})
+
+    user_service = UserService(db)
+    credential = await user_service.get_credentials(user_id)
+    
+    if credential:
+        return JSONResponse(content={
+            "connected": True,
+            "person_id": credential.linkedin_person_id,
+            "message": "Connected to LinkedIn"
+        })
+    
+    return JSONResponse(content={
+        "connected": False,
+        "message": "Not connected to LinkedIn"
+    })
 
 
 @router.post("/connect")
@@ -73,7 +81,12 @@ async def linkedin_connect():
 
 
 @router.get("/callback")
-async def linkedin_callback(code: str = None, error: str = None, error_description: str = None):
+async def linkedin_callback(
+    code: str = None, 
+    error: str = None, 
+    error_description: str = None,
+    db: AsyncSession = Depends(get_db)
+):
     """Handle OAuth callback from LinkedIn"""
     # Frontend URL for redirects
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -112,15 +125,34 @@ async def linkedin_callback(code: str = None, error: str = None, error_descripti
         user_data = user_response.json()
         
         person_id = user_data.get("sub")  # 'sub' is the unique Subject (Person ID)
+        full_name = user_data.get("name")
+        email = user_data.get("email")
+        picture = user_data.get("picture")
         
-        # Save token to file
-        save_token(access_token, person_id, expires_in)
+        # DB Persistence Logic
+        user_service = UserService(db)
         
-        # Reload token in linkedin_api instance
-        linkedin_api.reload_token()
+        # Check if user exists via LinkedIn ID
+        existing_user = await user_service.get_user_by_linkedin_id(person_id)
         
-        # Redirect back to frontend with success
-        return RedirectResponse(url=f"{FRONTEND_URL}/?linkedin_connected=true")
+        if existing_user:
+            # Update credentials
+            await user_service.update_linkedin_credentials(existing_user.id, access_token, expires_in)
+            user_id = existing_user.id
+        else:
+            # Create new user
+            new_user = await user_service.create_user_with_linkedin(
+                linkedin_person_id=person_id,
+                access_token=access_token,
+                expires_in=expires_in,
+                full_name=full_name,
+                email=email,
+                avatar_url=picture
+            )
+            user_id = new_user.id
+
+        # Redirect back to frontend with user_id
+        return RedirectResponse(url=f"{FRONTEND_URL}/?linkedin_connected=true&user_id={user_id}")
         
     except requests.exceptions.RequestException as e:
         return RedirectResponse(url=f"{FRONTEND_URL}/?linkedin_error=Token exchange failed: {str(e)}")
@@ -129,17 +161,10 @@ async def linkedin_callback(code: str = None, error: str = None, error_descripti
 
 
 @router.post("/disconnect")
-async def linkedin_disconnect():
-    """Disconnect LinkedIn by deleting stored token"""
-    success = delete_token()
-    
-    # Reload linkedin_api to clear credentials
-    linkedin_api.reload_token()
-    
-    if success:
-        return JSONResponse(content={
-            "success": True,
-            "message": "Successfully disconnected from LinkedIn"
-        })
-    else:
-        raise HTTPException(status_code=500, detail="Failed to disconnect")
+async def linkedin_disconnect(user_id: str = Query(...)):
+    """Disconnect LinkedIn (Placeholder - requires auth impl)"""
+    # Todo: Implement delete credential logic in UserService
+    return JSONResponse(content={
+        "success": True,
+        "message": "Disconnected (Note: Token remains in DB until implemented)"
+    })

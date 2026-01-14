@@ -1,7 +1,61 @@
+# === Environment & Secrets ===
 .env
-__pycache__/
-.local/
-generated_images/
-
 token.json
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# === Virtual Environments ===
+.venv/
+venv/
+backend/.venv/
+
+# === Database ===
+app.db
+*.db
+
+# === Generated Content ===
+generated_images/
+backend/generated_images/
+
+# === IDE / Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS Files ===
+.DS_Store
+desktop.ini
+Thumbs.db
+.local/
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Frontend ===
 frontend/node_modules/
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# === Testing/Coverage ===
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# === Alembic pycache ===
+backend/alembic/__pycache__/

@@ -8,8 +8,8 @@ import type { PostRequest, GeneratedPost, ApprovalRequest, ApprovalResponse } fr
 /**
  * Generate a new LinkedIn post
  */
-export async function generatePost(request: PostRequest): Promise<GeneratedPost> {
-    return apiRequest<GeneratedPost>(API_ENDPOINTS.GENERATE_POST, {
+export async function generatePost(request: PostRequest, userId: string): Promise<GeneratedPost> {
+    return apiRequest<GeneratedPost>(`${API_ENDPOINTS.GENERATE_POST}?user_id=${userId}`, {
         method: 'POST',
         body: JSON.stringify(request),
     });

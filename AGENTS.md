@@ -163,4 +163,37 @@ If you (the Agent) are asked to add a new feature:
     *   Register Router in `app/main.py`
 4.  **Verify**: Run the server and check endpoints.
 
-> **Final Note**: Consistency is key. Copy the established patterns found in `linkedin_router.py` and `workflow_service.py`.
+## 8. 💾 Database Operations (Strict)
+
+**Rule #1: Async Only**
+*   Use `sqlalchemy.ext.asyncio` for all DB interactions.
+*   NEVER use synchronous IO in async endpoints (e.g., standard `sqlite3` or sync SQLAlchemy sessions).
+
+**Rule #2: Service Layer Abstraction**
+*   **Routers** must NEVER write raw SQL or complex ORM queries.
+*   Delegate all DB access to a Service class (e.g., `UserService`, `PostService`).
+*   Example Router:
+    ```python
+    # ✅ Correct
+    user = await user_service.get_user(user_id)
+    
+    # ❌ Incorrect
+    result = await db.execute(select(User).where(User.id == user_id))
+    ```
+
+**Rule #3: Migrations**
+*   **NEVER** modify `db_models.py` without creating a migration.
+*   **Workflow**:
+    1.  Modify `app/models/db_models.py`
+    2.  Run `python -m alembic revision --autogenerate -m "description"`
+    3.  Run `python -m alembic upgrade head`
+
+**Rule #4: Session Dependency**
+*   Use `db: AsyncSession = Depends(get_db)` in routers.
+*   Pass this session explicitly to Service classes: `UserService(db)`.
+
+**Rule #5: Stateless Services**
+*   Services should NOT hold state (like `self.access_token`).
+*   Pass required IDs/Tokens as method arguments.
+*   Exception: `self.db` session is allowed in `__init__`.
+

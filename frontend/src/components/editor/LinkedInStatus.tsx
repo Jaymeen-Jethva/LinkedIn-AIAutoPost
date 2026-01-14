@@ -21,7 +21,13 @@ export function LinkedInStatus({ showSnackbar }: LinkedInStatusProps) {
 
     const checkStatus = async () => {
         try {
-            const status = await getLinkedInStatus();
+            const userId = localStorage.getItem('user_id');
+            // If no user_id, we can't be connected in this implementation
+            if (!userId) {
+                setIsConnected(false);
+                return;
+            }
+            const status = await getLinkedInStatus(userId);
             setIsConnected(status.connected);
         } catch (error) {
             console.error('Failed to check LinkedIn status:', error);
@@ -33,6 +39,10 @@ export function LinkedInStatus({ showSnackbar }: LinkedInStatusProps) {
         const urlParams = new URLSearchParams(window.location.search);
 
         if (urlParams.has('linkedin_connected')) {
+            const userId = urlParams.get('user_id');
+            if (userId) {
+                localStorage.setItem('user_id', userId);
+            }
             showSnackbar('✅ Successfully connected to LinkedIn!', 5000);
             window.history.replaceState({}, document.title, window.location.pathname);
             checkStatus();
@@ -67,8 +77,13 @@ export function LinkedInStatus({ showSnackbar }: LinkedInStatusProps) {
 
         setIsLoading(true);
         try {
-            const response = await disconnectLinkedIn();
+            const userId = localStorage.getItem('user_id');
+            if (!userId) {
+                throw new Error('User ID not found');
+            }
+            const response = await disconnectLinkedIn(userId);
             if (response.success) {
+                localStorage.removeItem('user_id');
                 showSnackbar('✅ Disconnected from LinkedIn', 4000);
                 setIsConnected(false);
             } else {
