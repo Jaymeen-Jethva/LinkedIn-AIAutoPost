@@ -277,7 +277,7 @@ class LinkedInWorkflow:
             user_preferences=user_preferences,
             include_image=include_image
         )
-        
+        logger.info(f"Initial state: {initial_state}")
         inputs = initial_state.__dict__
         # Stop at human_review
         # LangGraph behavior: depends on how interrupt is configured.

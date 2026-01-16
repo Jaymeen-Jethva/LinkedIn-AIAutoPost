@@ -161,10 +161,15 @@ async def linkedin_callback(
 
 
 @router.post("/disconnect")
-async def linkedin_disconnect(user_id: str = Query(...)):
-    """Disconnect LinkedIn (Placeholder - requires auth impl)"""
-    # Todo: Implement delete credential logic in UserService
-    return JSONResponse(content={
-        "success": True,
-        "message": "Disconnected (Note: Token remains in DB until implemented)"
-    })
+async def linkedin_disconnect(user_id: str = Query(...), db: AsyncSession = Depends(get_db)):
+    """Disconnect LinkedIn and remove credentials"""
+    try:
+        user_service = UserService(db)
+        await user_service.remove_linkedin_credentials(user_id)
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "Successfully disconnected from LinkedIn"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to disconnect: {str(e)}")

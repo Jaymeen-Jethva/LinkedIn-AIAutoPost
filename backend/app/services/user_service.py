@@ -76,3 +76,13 @@ class UserService:
         stmt = select(Credential).where(Credential.user_id == user_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def remove_linkedin_credentials(self, user_id: str) -> None:
+        """Remove LinkedIn credentials for a specific user"""
+        stmt = select(Credential).where(Credential.user_id == user_id)
+        result = await self.db.execute(stmt)
+        credential = result.scalar_one_or_none()
+        
+        if credential:
+            await self.db.delete(credential)
+            await self.db.commit()
