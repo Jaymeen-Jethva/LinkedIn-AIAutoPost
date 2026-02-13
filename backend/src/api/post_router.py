@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, Body, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.post_models import (
+from src.models.post_models import (
     PostRequest,
     ApprovalRequest,
     PostResponse,
@@ -20,9 +20,9 @@ from app.models.post_models import (
     MAX_TOPIC_LENGTH,
     ALLOWED_POST_TYPES
 )
-from app.services.workflow_service import LinkedInWorkflow
-from app.services.post_service import PostService
-from app.clients.db import get_db
+from src.services.workflow_service import LinkedInWorkflow
+from src.services.post_service import PostService
+from src.clients.db import get_db
 
 router = APIRouter()
 

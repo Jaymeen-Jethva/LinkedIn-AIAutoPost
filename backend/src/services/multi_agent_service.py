@@ -15,7 +15,7 @@ from langgraph.graph import StateGraph, END
 
 from dotenv import load_dotenv
 
-from app.services.agent_class import (
+from src.services.agent_class import (
     AgentState, 
     ResearchAgent, 
     StrategyAgent, 
