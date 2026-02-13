@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy import update
 from datetime import datetime
 
-from src.models.db_models import User, Credential
+from src.framework.db_schema import User, Credential
 
 
 class UserService:

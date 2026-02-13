@@ -4,7 +4,7 @@ from sqlalchemy import update
 from datetime import datetime
 from typing import Optional
 
-from src.models.db_models import Post
+from src.framework.db_schema import Post
 
 
 class PostService:

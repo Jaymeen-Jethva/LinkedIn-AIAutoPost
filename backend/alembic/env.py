@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Import Base and Models so Metadata is found
-from app.models.base import Base
-from app.models.db_models import User, Credential, Post
+from src.framework.base import Base
+from src.framework.db_schema import User, Credential, Post
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
