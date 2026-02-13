@@ -20,7 +20,7 @@ from src.models.post_models import (
     MAX_TOPIC_LENGTH,
     ALLOWED_POST_TYPES
 )
-from src.services.workflow_service import LinkedInWorkflow
+from src.services.ai.workflow_manager import LinkedInWorkflow
 from src.services.post_service import PostService
 from src.clients.sqlite_client import get_db
 
