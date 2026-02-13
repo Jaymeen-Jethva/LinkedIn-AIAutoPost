@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from dotenv import load_dotenv
 
-from src.clients.db import get_db
+from src.clients.sqlite_client import get_db
 from src.services.user_service import UserService
 
 load_dotenv()

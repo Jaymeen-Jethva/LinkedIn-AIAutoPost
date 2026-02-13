@@ -22,7 +22,7 @@ from src.models.post_models import (
 )
 from src.services.workflow_service import LinkedInWorkflow
 from src.services.post_service import PostService
-from src.clients.db import get_db
+from src.clients.sqlite_client import get_db
 
 router = APIRouter()
 
