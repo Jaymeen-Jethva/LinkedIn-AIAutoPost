@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update
 from datetime import datetime
+import uuid
 
 from src.framework.db_schema import User, Credential
 
@@ -9,6 +10,40 @@ from src.framework.db_schema import User, Credential
 class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def get_user_by_email(self, email: str) -> User | None:
+        """Find user by email"""
+        stmt = select(User).where(User.email == email)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def create_user_with_mock_credentials(self, email: str, full_name: str) -> User:
+        """Create user and generate mock LinkedIn credentials"""
+        # Check if exists
+        stmt = select(User).where(User.email == email)
+        result = await self.db.execute(stmt)
+        existing_user = result.scalar_one_or_none()
+        
+        if existing_user:
+             return existing_user
+             
+        # Create User
+        new_user = User(email=email, full_name=full_name)
+        self.db.add(new_user)
+        await self.db.flush()
+        
+        # Mock Creds
+        mock_cred = Credential(
+            user_id=new_user.id,
+            linkedin_person_id=f"mock_{uuid.uuid4().hex[:8]}",
+            access_token=f"mock_token_{uuid.uuid4().hex}",
+            token_expires_at=int(datetime.now().timestamp()) + 31536000, # 1 year
+            scope="openid profile w_member_social email"
+        )
+        self.db.add(mock_cred)
+        await self.db.commit()
+        await self.db.refresh(new_user)
+        return new_user
 
     async def get_user_by_linkedin_id(self, linkedin_person_id: str) -> User | None:
         """Find a user based on their linked LinkedIn ID"""
