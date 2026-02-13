@@ -9,8 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from src.api.linkedin_router import router as linkedin_router
-from src.api.post_router import router as post_router
+from src.controller.linkedin_router import router as linkedin_router
+from src.controller.post_router import router as post_router
 
 # Load environment variables
 load_dotenv()
