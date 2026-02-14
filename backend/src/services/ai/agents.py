@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -43,9 +44,21 @@ def render_messages_from_template(agent_name: str, **kwargs) -> List[Any]:
     and split into System and Human messages.
     """
     try:
-        # Assuming app is running from backend directory
-        prompts_dir = os.path.join(os.getcwd(), "app", "agent_prompts")
-        env = Environment(loader=FileSystemLoader(prompts_dir))
+        # Resolve path relative to this file: src/services/ai/agents.py -> src/agent_prompts
+        current_file = Path(__file__)
+        src_root = current_file.parent.parent.parent  # src/services/ai -> src/services -> src
+        prompts_dir = src_root / "agent_prompts"
+        
+        if not prompts_dir.exists():
+            # Fallback relative to CWD if running differently
+            logger.warning(f"Prompts dir not found at {prompts_dir}, trying alternative...")
+            prompts_dir = Path(os.getcwd()) / "src" / "agent_prompts"
+            
+        if not prompts_dir.exists():
+            logger.error(f"CRITICAL: Agent prompts directory not found at {prompts_dir}")
+            return [HumanMessage(content=f"Error: Templates not found at: {prompts_dir}")]
+
+        env = Environment(loader=FileSystemLoader(str(prompts_dir)))
         template = env.get_template(f"{agent_name}.jinja2")
         
         # Render the full text with variables
