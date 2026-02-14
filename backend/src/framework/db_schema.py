@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Boolean, T
 from sqlalchemy.orm import relationship
 import uuid
 
-from app.models.base import Base
+from src.framework.base import Base
 
 
 def generate_uuid():

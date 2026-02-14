@@ -9,6 +9,7 @@ Orchestrates the process of:
 """
 import os
 import json
+import logging
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from langgraph.graph import StateGraph, END
@@ -17,11 +18,12 @@ from langgraph.graph.state import CompiledStateGraph
 import requests
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.gemini_service import generate_linkedin_post, generate_linkedin_post_with_search, revise_linkedin_post, generate_image_with_gemini, generate_image_with_pollinations, LinkedInPost
-from app.services.linkedin_service import linkedin_api
-from app.tools.tavily_tool import tavily_search
-from app.services.user_service import UserService
+from src.services.ai.gemini_client import generate_linkedin_post, generate_linkedin_post_with_search, revise_linkedin_post, generate_image_with_gemini, generate_image_with_pollinations, LinkedInPost
+from src.services.linkedin.api_client import linkedin_api
+from src.tools.tavily_tool import tavily_search
+from src.services.user_service import UserService
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class WorkflowState:
@@ -53,7 +55,7 @@ class LinkedInWorkflow:
         # Initialize multi-agent workflow if requested
         if use_multi_agent:
             try:
-                from app.services.multi_agent_service import MultiAgentGeminiWorkflow
+                from src.services.ai.agent_orchestrator import MultiAgentGeminiWorkflow
                 self.multi_agent_workflow = MultiAgentGeminiWorkflow()
                 print("✅ Multi-agent workflow initialized successfully")
             except Exception as e:

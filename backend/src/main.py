@@ -9,8 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.api.linkedin_router import router as linkedin_router
-from app.api.post_router import router as post_router
+from src.controller.linkedin_router import router as linkedin_router
+from src.controller.linkedin_router import router as linkedin_router
+from src.controller.post_router import router as post_router
+from src.controller.user_router import router as user_router
 
 # Load environment variables
 load_dotenv()
@@ -32,7 +34,9 @@ app.add_middleware(
 
 # Include routers
 app.include_router(linkedin_router, prefix="/linkedin", tags=["LinkedIn"])
+app.include_router(linkedin_router, prefix="/linkedin", tags=["LinkedIn"])
 app.include_router(post_router, tags=["Posts"])
+app.include_router(user_router, prefix="/users", tags=["Users"])
 
 
 # Health check endpoint
@@ -52,4 +56,4 @@ except RuntimeError:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
